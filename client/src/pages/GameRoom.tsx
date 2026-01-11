@@ -23,8 +23,9 @@ function WaitingLobby({ game, userId, isHost }: { game: any, userId: number, isH
   };
 
   const copyCode = () => {
-    navigator.clipboard.writeText(game.id);
-    toast({ title: "Copied!", description: "Game code copied to clipboard." });
+    const inviteLink = `${window.location.origin}/game/${game.id}`;
+    navigator.clipboard.writeText(inviteLink);
+    toast({ title: "Copied!", description: "Invite link copied to clipboard." });
   };
 
   return (
@@ -368,15 +369,33 @@ export default function GameRoom() {
   
   const { data: game, isLoading, error } = useGame(gameId || null);
   const [user, setUser] = useState<{ id: number; username: string } | null>(null);
+  const joinGame = useJoinGame();
+  const { toast } = useToast();
 
   useEffect(() => {
     const stored = localStorage.getItem("wordrush_user");
     if (!stored) {
+      // Store current path to redirect back after setup
+      sessionStorage.setItem("redirect_after_setup", `/game/${gameId}`);
       setLocation("/setup");
       return;
     }
-    setUser(JSON.parse(stored));
-  }, [setLocation]);
+    const userData = JSON.parse(stored);
+    setUser(userData);
+
+    // Auto-join if not already in game
+    if (game && !game.players.some((p: any) => p.userId === userData.id)) {
+      joinGame.mutate(
+        { gameId: game.id, userId: userData.id },
+        {
+          onError: (err) => {
+            toast({ title: "Failed to join", description: err.message, variant: "destructive" });
+            setLocation("/lobby");
+          }
+        }
+      );
+    }
+  }, [game, setLocation, gameId]);
 
   if (isLoading) {
     return (

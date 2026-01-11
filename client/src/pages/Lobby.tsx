@@ -94,8 +94,8 @@ export default function Lobby() {
                     <Users className="w-5 h-5" />
                   </div>
                   <div className="text-left">
-                    <div className="font-bold text-white group-hover:text-blue-300 transition-colors">Multiplayer</div>
-                    <div className="text-xs text-muted-foreground">Play with friends</div>
+                    <div className="font-bold text-white group-hover:text-blue-300 transition-colors">Create Multiplayer</div>
+                    <div className="text-xs text-muted-foreground">Get an invite link</div>
                   </div>
                 </div>
                 <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-white transition-colors" />
