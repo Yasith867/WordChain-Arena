@@ -5,15 +5,26 @@ import { NeonButton } from "@/components/NeonButton";
 import { NeonInput } from "@/components/Input";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Copy, Trophy, Timer, Play, Users } from "lucide-react";
+import { Loader2, Copy, Trophy, Timer, Play, Users, ArrowLeft, LogOut } from "lucide-react";
 import confetti from "canvas-confetti";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
 
 // COMPONENTS FOR GAME STAGES
 
 function WaitingLobby({ game, userId, isHost }: { game: any, userId: number, isHost: boolean }) {
   const startGame = useStartGame();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  const handleLeave = async () => {
+    try {
+      await apiRequest("POST", `/api/games/${game.id}/leave`, { userId });
+      setLocation("/lobby");
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to leave game", variant: "destructive" });
+    }
+  };
 
   const handleStart = () => {
     if (game.players.length < 2) return;
@@ -30,6 +41,15 @@ function WaitingLobby({ game, userId, isHost }: { game: any, userId: number, isH
 
   return (
     <div className="max-w-2xl w-full mx-auto space-y-8">
+      {/* Back Button */}
+      <button 
+        onClick={handleLeave}
+        className="absolute top-8 left-8 p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors z-20 group flex items-center gap-2"
+      >
+        <ArrowLeft className="w-5 h-5 text-muted-foreground group-hover:text-white transition-colors" />
+        <span className="text-xs font-bold text-muted-foreground group-hover:text-white transition-colors pr-1">LEAVE</span>
+      </button>
+
       <div className="text-center space-y-4">
         <h1 className="text-4xl md:text-6xl font-black font-display tracking-tight">LOBBY</h1>
         <div 
@@ -116,6 +136,18 @@ function Gameplay({ game, userId }: { game: any, userId: number }) {
   const submitWord = useSubmitWord();
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+
+  const handleLeave = async () => {
+    if (confirm("Are you sure you want to leave the game?")) {
+      try {
+        await apiRequest("POST", `/api/games/${game.id}/leave`, { userId });
+        setLocation("/lobby");
+      } catch (err) {
+        toast({ title: "Error", description: "Failed to leave game", variant: "destructive" });
+      }
+    }
+  };
 
   const currentPlayer = game.players.find((p: any) => p.userId === userId);
   const hasSubmitted = currentPlayer?.hasSubmitted;
@@ -178,6 +210,15 @@ function Gameplay({ game, userId }: { game: any, userId: number }) {
 
   return (
     <div className="w-full max-w-3xl mx-auto flex flex-col items-center justify-between min-h-[80vh]">
+      {/* Leave Button */}
+      <button 
+        onClick={handleLeave}
+        className="absolute top-8 left-8 p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors z-20 group flex items-center gap-2"
+      >
+        <LogOut className="w-5 h-5 text-muted-foreground group-hover:text-red-400 transition-colors" />
+        <span className="text-xs font-bold text-muted-foreground group-hover:text-red-400 transition-colors pr-1">LEAVE</span>
+      </button>
+
       {/* Header Info */}
       <div className="w-full flex justify-between items-center mb-8 px-4 py-3 bg-white/5 rounded-full border border-white/10">
         <div className="flex items-center gap-2">
@@ -369,6 +410,7 @@ export default function GameRoom() {
   
   const { data: game, isLoading, error } = useGame(gameId || null);
   const [user, setUser] = useState<{ id: number; username: string } | null>(null);
+  // @ts-ignore
   const joinGame = useJoinGame();
   const { toast } = useToast();
 

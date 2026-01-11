@@ -7,6 +7,7 @@ import { NeonInput } from "@/components/Input";
 import { Bot, Users, Play, ArrowRight, Gamepad2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
 
 export default function Lobby() {
   const [user, setUser] = useState<{ id: number; username: string } | null>(null);
@@ -63,6 +64,14 @@ export default function Lobby() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background relative overflow-hidden">
+      {/* Back Button */}
+      <button 
+        onClick={() => setLocation("/")}
+        className="absolute top-8 left-8 p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors z-20 group"
+      >
+        <ArrowLeft className="w-5 h-5 text-muted-foreground group-hover:text-white transition-colors" />
+      </button>
+
       {/* Dynamic background shapes */}
       <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-[-10%] left-[-5%] w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: "1s" }} />

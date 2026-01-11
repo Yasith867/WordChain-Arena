@@ -64,6 +64,15 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    leave: {
+      method: 'POST' as const,
+      path: '/api/games/:id/leave',
+      input: z.object({ userId: z.number() }),
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        404: errorSchemas.notFound,
+      },
+    },
   },
 };
 

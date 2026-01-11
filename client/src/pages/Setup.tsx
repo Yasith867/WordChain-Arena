@@ -4,7 +4,7 @@ import { useCreateUser } from "@/hooks/use-game";
 import { GameCard, CardTitle, CardDescription } from "@/components/GameCard";
 import { NeonButton } from "@/components/NeonButton";
 import { NeonInput } from "@/components/Input";
-import { UserCircle2 } from "lucide-react";
+import { UserCircle2, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Setup() {
@@ -37,6 +37,13 @@ export default function Setup() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background relative">
+      <button 
+        onClick={() => setLocation("/")}
+        className="absolute top-8 left-8 p-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors z-20 group"
+      >
+        <ArrowLeft className="w-5 h-5 text-muted-foreground group-hover:text-white transition-colors" />
+      </button>
+
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/5 via-background to-background pointer-events-none" />
       
       <GameCard>

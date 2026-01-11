@@ -76,5 +76,16 @@ export async function registerRoutes(
     }
   });
 
+  app.post(api.games.leave.path, async (req, res) => {
+    try {
+      const gameId = req.params.id;
+      const { userId } = req.body;
+      await storage.leaveGame(gameId, userId);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ message: err.message });
+    }
+  });
+
   return httpServer;
 }

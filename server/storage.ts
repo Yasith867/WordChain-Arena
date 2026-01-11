@@ -13,6 +13,7 @@ export interface IStorage {
   joinGame(gameId: string, userId: number): Promise<Player>;
   startGame(gameId: string): Promise<void>;
   submitWord(gameId: string, userId: number, word: string): Promise<{valid: boolean, message?: string}>;
+  leaveGame(gameId: string, userId: number): Promise<void>;
   processBotMove(gameId: string): Promise<void>; // For Alice
 }
 
@@ -169,13 +170,48 @@ export class MemStorage implements IStorage {
     const player = playerIds.map(pid => this.players.get(pid)).find(p => p?.userId === userId);
     
     if (player) {
-      player.score += 1;
+      player.score = (player.score || 0) + 1;
       this.players.set(player.id, player);
     }
 
     // Advance round
     await this.endRound(game, word.toUpperCase());
     return { valid: true };
+  }
+
+  async leaveGame(gameId: string, userId: number): Promise<void> {
+    const playerIds = this.gamePlayers.get(gameId) || [];
+    const playerIndex = playerIds.findIndex(pid => this.players.get(pid)?.userId === userId);
+    
+    if (playerIndex !== -1) {
+      const pid = playerIds[playerIndex];
+      this.players.delete(pid);
+      playerIds.splice(playerIndex, 1);
+      
+      const game = this.games.get(gameId);
+      if (game) {
+        // If host left, assign new host if players left
+        if (game.hostId === userId && playerIds.length > 0) {
+          const nextPlayer = this.players.get(playerIds[0]);
+          if (nextPlayer) game.hostId = nextPlayer.userId;
+        }
+
+        // Check if only one player left (and game was in progress)
+        if (game.status === 'playing' && playerIds.length === 1) {
+          const lastPlayerPid = playerIds[0];
+          const lastPlayer = this.players.get(lastPlayerPid);
+          if (lastPlayer && lastPlayer.userId !== -1) { // Not just the bot
+             game.status = 'finished';
+          }
+        }
+        
+        // Cleanup game if empty or only bot
+        if (playerIds.length === 0 || (playerIds.length === 1 && this.players.get(playerIds[0])?.userId === -1)) {
+          this.games.delete(gameId);
+          this.gamePlayers.delete(gameId);
+        }
+      }
+    }
   }
 
   private async endRound(game: Game, winningWord?: string) {
