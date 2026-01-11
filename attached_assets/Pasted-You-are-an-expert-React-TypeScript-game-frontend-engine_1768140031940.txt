@@ -1,0 +1,152 @@
+You are an expert React + TypeScript game frontend engineer.
+
+Create a BRAND NEW Vite + React + TypeScript project from scratch and build a complete, clean, multi-page real-time multiplayer word-chain game frontend. This project must be backend-ready for a Linera microchain smart contract, but currently uses mock logic.
+
+====================================
+GAME OVERVIEW
+====================================
+
+Game name: Word Chain Rush (or any suitable name)
+
+Description:
+A fast-paced real-time multiplayer word chain game where players race to submit words. Each word must start with the last letter of the previous word. The game runs for 5 rounds, with only 5 seconds per round. First valid answer wins the point.
+
+====================================
+CORE GAME RULES
+====================================
+
+- Host counts as a player.
+- Minimum total players to start: 2 (host + 1).
+- Maximum total players: 4.
+- Total rounds per game: 5.
+- Each round lasts 5 seconds.
+- Each round starts with a DIFFERENT starting word.
+- Words can be ANY length (no min/max length).
+- ONLY validation rule:
+  First letter of submitted word must equal last letter of current word.
+- First valid answer wins the round and gets +1 point.
+- If no one answers within 5 seconds, no points are awarded.
+
+====================================
+REQUIRED PAGES (STRICT ORDER)
+====================================
+
+PAGE 1 — HOME / LANDING PAGE
+- Show the game name prominently.
+- Short description of what the game does.
+- Bullet points explaining gameplay:
+  - 2–4 players
+  - Real-time
+  - 5 rounds, 5 seconds each
+- One main glowing button:
+  “Play Now”
+- Clean, premium look. No lobby content here.
+
+------------------------------------
+
+PAGE 2 — PLAYER CUSTOMIZATION PAGE
+- Player MUST enter a username.
+- Input field: “Enter your username”.
+- Continue button:
+  - Disabled until a username is entered.
+- Store username in global app state.
+- If username is empty, user cannot proceed.
+
+------------------------------------
+
+PAGE 3 — PARTY / LOBBY PAGE
+Purpose: Create or join a game.
+
+This page MUST NOT look cluttered.
+
+Section A — Play with Friends (Real Players Mode)
+- Button: “Create Real Game”
+- When clicked:
+  - Generate a MOCK Game ID (example: ABC123).
+  - Show an invite link like:
+    https://yourapp/join/ABC123
+- Players can ONLY join using a Game ID.
+- DO NOT auto-add fake players.
+- Player list shows usernames.
+- Player limit: 2–4.
+- Start Game button:
+  - Only visible to host.
+  - Enabled only when total players >= 2.
+
+Section B — Play with Bot (Offline Mode)
+- Clearly separated card.
+- Button text:
+  “Don’t have friends online? Try playing with Alice (Bot)”
+- Alice Bot joins ONLY if this option is selected.
+- Bot mode does NOT generate a Game ID.
+
+------------------------------------
+
+PAGE 4 — GAME START COUNTDOWN PAGE
+- Full-screen countdown animation:
+  5 → 4 → 3 → 2 → 1 → START
+- No inputs allowed during countdown.
+- After countdown ends, transition to gameplay.
+
+------------------------------------
+
+PAGE 5 — GAMEPLAY + LIVE SCOREBOARD
+GAMEPLAY VIEW:
+- Show current word in large text.
+- Show round counter (Round X / 5).
+- Show 5-second countdown timer.
+- Word input field for player answers.
+- Disable input if:
+  - Timer reaches 0
+  - Player already submitted this round
+- Alice Bot behavior:
+  - Responds after 1–3 seconds.
+  - Always submits valid words.
+  - Sometimes loses (not perfect).
+
+LIVE SCOREBOARD VIEW (after final round):
+- Sort players by score (highest first).
+- Highlight the winner.
+- Show all usernames and scores.
+- Buttons:
+  - “Play Again”
+  - “Back to Home”
+
+====================================
+TECHNICAL REQUIREMENTS
+====================================
+
+- Use React with TypeScript (Vite).
+- Use React hooks only.
+- No external UI libraries.
+- Use simple CSS or inline styles.
+- Use clean card-based layout.
+- Use glowing / gradient buttons for main actions.
+- No “all-in-one” page layouts.
+- Each page must be visually distinct.
+- Keep code readable and well-commented.
+
+====================================
+BACKEND-READY REQUIREMENTS
+====================================
+
+- Add clear comments like:
+  // This will be replaced by Linera backend logic
+- Game ID logic must be designed to be replaced by on-chain IDs.
+- Player actions must be structured so they can later be replaced by:
+  - Linera contract calls
+  - Subscriptions
+  - Cross-chain events
+
+====================================
+OUTPUT INSTRUCTIONS
+====================================
+
+- Generate ALL required files.
+- Ensure the app runs immediately in Replit.
+- The UI must follow the 5-page flow exactly.
+- No fake auto-joining players in real-player mode.
+- No hard-coded starting words like “apple”.
+- Each round must start with a different word.
+
+This project should look like a REAL GAME PRODUCT, not a demo.
