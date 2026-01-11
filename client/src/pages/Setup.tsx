@@ -21,7 +21,9 @@ export default function Setup() {
       onSuccess: (user) => {
         // Store user in localStorage for persistence across refreshes
         localStorage.setItem("wordrush_user", JSON.stringify(user));
-        setLocation("/lobby");
+        const redirect = sessionStorage.getItem("redirect_after_setup") || "/lobby";
+        sessionStorage.removeItem("redirect_after_setup");
+        setLocation(redirect);
       },
       onError: (err) => {
         toast({
