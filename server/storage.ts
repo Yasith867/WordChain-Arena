@@ -1,41 +1,47 @@
-import { 
-  users, games, players, 
-  type User, type Game, type Player, type GameState,
-  type InsertUser 
+import {
+  type User,
+  type Game,
+  type Player,
+  type GameState,
+  type InsertUser,
 } from "@shared/schema";
 
 export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   getUser(id: number): Promise<User | undefined>;
-  
+
   createGame(hostId: number, isBotGame: boolean): Promise<Game>;
   getGame(id: string): Promise<GameState | undefined>;
   joinGame(gameId: string, userId: number): Promise<Player>;
   startGame(gameId: string): Promise<void>;
-  submitWord(gameId: string, userId: number, word: string): Promise<{valid: boolean, message?: string}>;
+  submitWord(
+    gameId: string,
+    userId: number,
+    word: string,
+  ): Promise<{ valid: boolean; message?: string; points?: number }>;
   leaveGame(gameId: string, userId: number): Promise<void>;
-  processBotMove(gameId: string): Promise<void>; // For Alice
+  processBotMove(gameId: string): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private games: Map<string, Game>;
-  private players: Map<number, Player>; // player id -> player
-  private gamePlayers: Map<string, number[]>; // gameId -> playerIds
+  private users = new Map<number, User>();
+  private games = new Map<string, Game>();
+  private players = new Map<number, Player>();
+  private gamePlayers = new Map<string, number[]>();
+
   private userIdCounter = 1;
   private playerIdCounter = 1;
 
-  constructor() {
-    this.users = new Map();
-    this.games = new Map();
-    this.players = new Map();
-    this.gamePlayers = new Map();
-  }
+  // =====================
+  // USERS
+  // =====================
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const user: User = {
+      id: this.userIdCounter++,
+      username: insertUser.username,
+    };
+    this.users.set(user.id, user);
     return user;
   }
 
@@ -43,36 +49,38 @@ export class MemStorage implements IStorage {
     return this.users.get(id);
   }
 
+  // =====================
+  // GAMES
+  // =====================
+
   async createGame(hostId: number, isBotGame: boolean): Promise<Game> {
     const id = Math.random().toString(36).substring(2, 8).toUpperCase();
+
     const game: Game = {
       id,
       hostId,
-      status: 'waiting',
+      status: "waiting",
       round: 0,
-      currentWord: '',
+      currentWord: "",
       roundEndsAt: null,
-      isBotGame
+      isBotGame,
     };
+
     this.games.set(id, game);
     this.gamePlayers.set(id, []);
-    
-    // Auto-join host
+
     await this.joinGame(id, hostId);
 
     if (isBotGame) {
-      // Create Alice bot if not exists
-      // For simplicity, we just add a "bot" player
-      // We'll treat userId -1 as Alice
-      const botPlayer: Player = {
+      const bot: Player = {
         id: this.playerIdCounter++,
         gameId: id,
         userId: -1,
         score: 0,
-        hasSubmitted: false
+        hasSubmitted: false,
       };
-      this.players.set(botPlayer.id, botPlayer);
-      this.gamePlayers.get(id)?.push(botPlayer.id);
+      this.players.set(bot.id, bot);
+      this.gamePlayers.get(id)!.push(bot.id);
     }
 
     return game;
@@ -82,42 +90,43 @@ export class MemStorage implements IStorage {
     const game = this.games.get(id);
     if (!game) return undefined;
 
-    // Check timeouts if playing
-    if (game.status === 'playing' && game.roundEndsAt && new Date() > game.roundEndsAt) {
+    if (
+      game.status === "playing" &&
+      game.roundEndsAt &&
+      Date.now() > game.roundEndsAt.getTime()
+    ) {
       await this.endRound(game);
     }
 
-    // Bot logic hook (simple poll-based simulation)
-    if (game.status === 'playing' && game.isBotGame) {
+    if (game.status === "playing" && game.isBotGame) {
       await this.processBotMove(id);
     }
 
-    const playerIds = this.gamePlayers.get(id) || [];
-    const gamePlayersList = playerIds.map(pid => this.players.get(pid)!).filter(Boolean);
-    
-    const playersWithNames = gamePlayersList.map(p => {
-      let username = "Unknown";
-      if (p.userId === -1) username = "Alice (Bot)";
-      else {
-        const u = this.users.get(p.userId);
-        if (u) username = u.username;
-      }
-      return { ...p, username };
-    });
+    const players = (this.gamePlayers.get(id) || [])
+      .map((pid) => this.players.get(pid))
+      .filter(Boolean)
+      .map((p) => ({
+        ...p!,
+        username:
+          p!.userId === -1
+            ? "Alice (Bot)"
+            : this.users.get(p!.userId)?.username ?? "Unknown",
+      }));
 
-    return { ...game, players: playersWithNames };
+    return { ...game, players };
   }
 
   async joinGame(gameId: string, userId: number): Promise<Player> {
     const game = this.games.get(gameId);
     if (!game) throw new Error("Game not found");
-    if (game.status !== 'waiting') throw new Error("Game already started");
-    
-    const playerIds = this.gamePlayers.get(gameId) || [];
+    if (game.status !== "waiting") throw new Error("Game already started");
+
+    const playerIds = this.gamePlayers.get(gameId)!;
     if (playerIds.length >= 4) throw new Error("Game full");
 
-    // Check if already joined
-    const existing = playerIds.find(pid => this.players.get(pid)?.userId === userId);
+    const existing = playerIds.find(
+      (pid) => this.players.get(pid)?.userId === userId,
+    );
     if (existing) return this.players.get(existing)!;
 
     const player: Player = {
@@ -125,126 +134,124 @@ export class MemStorage implements IStorage {
       gameId,
       userId,
       score: 0,
-      hasSubmitted: false
+      hasSubmitted: false,
     };
+
     this.players.set(player.id, player);
     playerIds.push(player.id);
-    this.gamePlayers.set(gameId, playerIds); // ensure ref
-
     return player;
   }
 
   async startGame(gameId: string): Promise<void> {
     const game = this.games.get(gameId);
     if (!game) throw new Error("Game not found");
-    
-    // Start countdown or go straight to round 1 (Requirement: 5s countdown page, backend can just set to playing or countdown)
-    // We'll set to playing immediately, frontend handles visual countdown before calling start? 
-    // Or we have a 'countdown' status.
-    // Let's go with round 1 immediately for simplicity of backend logic, frontend manages the "5,4,3,2,1" transition then calls start.
-    
-    const startWords = ["APPLE", "TIGER", "RIVER", "CLOUD", "MUSIC", "GHOST", "LEMON", "PIZZA"];
-    const word = startWords[Math.floor(Math.random() * startWords.length)];
 
-    game.status = 'playing';
+    const words = ["APPLE", "TIGER", "RIVER", "CLOUD", "MUSIC"];
+    game.status = "playing";
     game.round = 1;
-    game.currentWord = word;
-    game.roundEndsAt = new Date(Date.now() + 5000); // 5 seconds
-    this.games.set(gameId, game);
+    game.currentWord = words[Math.floor(Math.random() * words.length)];
+    game.roundEndsAt = new Date(Date.now() + 5000);
+
+    this.resetSubmissions(gameId);
   }
 
-  async submitWord(gameId: string, userId: number, word: string): Promise<{valid: boolean, message?: string}> {
+  async submitWord(
+    gameId: string,
+    userId: number,
+    word: string,
+  ): Promise<{ valid: boolean; message?: string; points?: number }> {
     const game = this.games.get(gameId);
     if (!game) return { valid: false, message: "Game not found" };
-    if (game.status !== 'playing') return { valid: false, message: "Round not active" };
-    
+    if (game.status !== "playing")
+      return { valid: false, message: "Round not active" };
+
     const lastChar = game.currentWord.slice(-1).toUpperCase();
-    const firstChar = word.trim().charAt(0).toUpperCase();
+    const firstChar = word.trim()[0]?.toUpperCase();
 
     if (firstChar !== lastChar) {
-      return { valid: false, message: `Word must start with '${lastChar}'` };
+      return {
+        valid: false,
+        message: `Word must start with '${lastChar}'`,
+      };
     }
 
-    // Winner!
-    const playerIds = this.gamePlayers.get(gameId) || [];
-    const player = playerIds.map(pid => this.players.get(pid)).find(p => p?.userId === userId);
-    
-    if (player) {
-      player.score = (player.score || 0) + 1;
-      this.players.set(player.id, player);
+    const player = this.findPlayer(gameId, userId);
+    if (!player || player.hasSubmitted) {
+      return { valid: false, message: "Already submitted" };
     }
 
-    // Advance round
+    player.score += 1;
+    player.hasSubmitted = true;
+
     await this.endRound(game, word.toUpperCase());
-    return { valid: true };
+    return { valid: true, points: 1 };
   }
 
   async leaveGame(gameId: string, userId: number): Promise<void> {
-    const playerIds = this.gamePlayers.get(gameId) || [];
-    const playerIndex = playerIds.findIndex(pid => this.players.get(pid)?.userId === userId);
-    
-    if (playerIndex !== -1) {
-      const pid = playerIds[playerIndex];
-      this.players.delete(pid);
-      playerIds.splice(playerIndex, 1);
-      
-      const game = this.games.get(gameId);
-      if (game) {
-        // If host left, assign new host if players left
-        if (game.hostId === userId && playerIds.length > 0) {
-          const nextPlayer = this.players.get(playerIds[0]);
-          if (nextPlayer) game.hostId = nextPlayer.userId;
-        }
+    const ids = this.gamePlayers.get(gameId);
+    if (!ids) return;
 
-        // Check if only one player left (and game was in progress)
-        if (game.status === 'playing' && playerIds.length === 1) {
-          const lastPlayerPid = playerIds[0];
-          const lastPlayer = this.players.get(lastPlayerPid);
-          if (lastPlayer && lastPlayer.userId !== -1) { // Not just the bot
-             game.status = 'finished';
-          }
-        }
-        
-        // Cleanup game if empty or only bot
-        if (playerIds.length === 0 || (playerIds.length === 1 && this.players.get(playerIds[0])?.userId === -1)) {
-          this.games.delete(gameId);
-          this.gamePlayers.delete(gameId);
-        }
-      }
+    const index = ids.findIndex(
+      (pid) => this.players.get(pid)?.userId === userId,
+    );
+    if (index === -1) return;
+
+    const pid = ids[index];
+    this.players.delete(pid);
+    ids.splice(index, 1);
+
+    if (ids.length === 0) {
+      this.games.delete(gameId);
+      this.gamePlayers.delete(gameId);
     }
   }
 
-  private async endRound(game: Game, winningWord?: string) {
+  // =====================
+  // HELPERS
+  // =====================
+
+  private findPlayer(gameId: string, userId: number) {
+    return (this.gamePlayers.get(gameId) || [])
+      .map((pid) => this.players.get(pid))
+      .find((p) => p?.userId === userId);
+  }
+
+  private resetSubmissions(gameId: string) {
+    for (const pid of this.gamePlayers.get(gameId) || []) {
+      const p = this.players.get(pid);
+      if (p) p.hasSubmitted = false;
+    }
+  }
+
+  private async endRound(game: Game, nextWord?: string) {
     if (game.round >= 5) {
-      game.status = 'finished';
+      game.status = "finished";
       game.roundEndsAt = null;
-    } else {
-      game.round += 1;
-      // If someone won, use their word. If timeout, pick random new word.
-      if (winningWord) {
-        game.currentWord = winningWord;
-      } else {
-        const backupWords = ["STORM", "BREAD", "NIGHT", "DREAM", "FLAME"];
-        game.currentWord = backupWords[Math.floor(Math.random() * backupWords.length)];
-      }
-      game.roundEndsAt = new Date(Date.now() + 5000);
+      return;
     }
-    this.games.set(game.id, game);
+
+    game.round++;
+    game.currentWord =
+      nextWord ??
+      ["STORM", "BREAD", "NIGHT", "FLAME"][
+        Math.floor(Math.random() * 4)
+      ];
+    game.roundEndsAt = new Date(Date.now() + 5000);
+    this.resetSubmissions(game.id);
   }
 
-  async processBotMove(gameId: string) {
+  async processBotMove(gameId: string): Promise<void> {
     const game = this.games.get(gameId);
-    if (!game || game.status !== 'playing' || !game.isBotGame) return;
+    if (!game || !game.isBotGame || game.status !== "playing") return;
 
-    // Bot reacts after ~2 seconds into the round
-    const timeLeft = game.roundEndsAt ? game.roundEndsAt.getTime() - Date.now() : 0;
-    if (timeLeft < 3000 && timeLeft > 1000) {
-      // 30% chance to miss/be slow
-      if (Math.random() > 0.3) {
-        const lastChar = game.currentWord.slice(-1).toUpperCase();
-        const botWord = lastChar + "BOTWORD"; // Simple valid word
-        await this.submitWord(gameId, -1, botWord); // -1 is Alice
-      }
+    const bot = this.findPlayer(gameId, -1);
+    if (!bot || bot.hasSubmitted) return;
+
+    const timeLeft =
+      game.roundEndsAt?.getTime()! - Date.now();
+    if (timeLeft < 3000 && timeLeft > 1000 && Math.random() > 0.3) {
+      const letter = game.currentWord.slice(-1);
+      await this.submitWord(gameId, -1, letter + "BOT");
     }
   }
 }
